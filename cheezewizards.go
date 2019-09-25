@@ -103,13 +103,15 @@ func (cw *CheezeWizards) GetWizardByID(id int) (wizard *Wizard, err error) {
 
 	}
 
-	return nil, nil
+	body, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	return nil, fmt.Errorf("unsuccessful response. status=%s. msg=%s", res.Status, string(body))
 }
 
 // GetWizardsByAttributes finds wizards by affinity, power, and/or owner
 // Each attribute is an optional query parameter: affinity, min/max power, and owner
 // affinity: 0 = NOTSET, 1 = NEUTRAL, 2 = FIRE, 3 = WIND, 4 = WATER
-func (cw *CheezeWizards) GetWizardsByAttributes(owner, affinity, minPower, maxPower string) (wizards *[]Wizard, err error) {
+func (cw *CheezeWizards) GetWizardsByAttributes(owner string, affinity, minPower, maxPower string) (wizards *[]Wizard, err error) {
 	fmt.Printf("\nfetching wizards by owner=%s, affinity=%s, minPower=%s, maxPower=%s", owner, affinity, minPower, maxPower)
 
 	queryParams := "?"
@@ -160,7 +162,47 @@ func (cw *CheezeWizards) GetWizardsByAttributes(owner, affinity, minPower, maxPo
 	body, err := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	return nil, fmt.Errorf("unsuccessful response. status=%s. msg=%s", res.Status, string(body))
+}
 
+// GetDuelByID finds a duel by id
+func (cw *CheezeWizards) GetDuelByID(id int) (duel *Duel, err error) {
+	fmt.Printf("\nfetching duel with id=%d", id)
+
+	url := cw.GetBaseURL() + "/duels/" + strconv.Itoa(id)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	cw.setHeaders(req)
+
+	res, err := cw.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode == 200 {
+		body, err := ioutil.ReadAll(res.Body)
+		res.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		duel := &Duel{}
+		if err := json.Unmarshal(body, duel); err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("\nsuccessfully fetched duel=%+v", duel)
+
+		return duel, nil
+
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	return nil, fmt.Errorf("unsuccessful response. status=%s. msg=%s", res.Status, string(body))
 }
 
 func (cw *CheezeWizards) setHeaders(req *http.Request) {
