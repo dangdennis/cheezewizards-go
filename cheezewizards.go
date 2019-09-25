@@ -69,7 +69,7 @@ func NewCheezeWizards(apiKey string, email string) *CheezeWizards {
 
 // GetWizardByID finds a wizard by id
 func (cw *CheezeWizards) GetWizardByID(id int) (wizard *Wizard, err error) {
-	fmt.Printf("\nfetching wizard with id=%d", id)
+	fmt.Printf("\nfetching wizard by id=%d.", id)
 
 	url := cw.GetBaseURL() + "/wizards/" + strconv.Itoa(id)
 
@@ -109,10 +109,12 @@ func (cw *CheezeWizards) GetWizardByID(id int) (wizard *Wizard, err error) {
 }
 
 // GetWizardsByAttributes finds wizards by affinity, power, and/or owner
-// Each attribute is an optional query parameter: affinity, min/max power, and owner
-// affinity: 0 = NOTSET, 1 = NEUTRAL, 2 = FIRE, 3 = WIND, 4 = WATER
+// owner - wizards owned by this address
+// affinity - wizards with this affinity: 0 = NOTSET, 1 = NEUTRAL, 2 = FIRE, 3 = WIND, 4 = WATER
+// minPower - wizards whose current power is greater than or equal to minPower
+// maxPower - wizards whose current power is less than or equal to maxPower
 func (cw *CheezeWizards) GetWizardsByAttributes(owner string, affinity, minPower, maxPower string) (wizards *[]Wizard, err error) {
-	fmt.Printf("\nfetching wizards by owner=%s, affinity=%s, minPower=%s, maxPower=%s", owner, affinity, minPower, maxPower)
+	fmt.Printf("\nfetching wizards by: owner=%s. affinity=%s. minPower=%s. maxPower=%s.", owner, affinity, minPower, maxPower)
 
 	queryParams := "?"
 	if owner != "" {
@@ -198,6 +200,79 @@ func (cw *CheezeWizards) GetDuelByID(id int) (duel *Duel, err error) {
 
 		return duel, nil
 
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	return nil, fmt.Errorf("unsuccessful response. status=%s. msg=%s", res.Status, string(body))
+}
+
+// GetDuelsByAttributes fetches a list of duels
+// all query params are optional
+// wizardIds - duels involving these wizards (coma separated list of wizardIds)
+// excludeInProgress - true for completed duels, false for all duels (default)
+// excludeFinished - true for duels in progress, false for all duels (default)
+// startBlockFrom - duels whose start block is greater than or equal to this block number
+// startBlockTo - duels whose start block is less than or equal to this block number
+// endBlockFrom - duels whose end block is greater than or equal to this block number
+// endBlockTo - duels whose end block is less than or equal to this block number
+func (cw *CheezeWizards) GetDuelsByAttributes(wizardIds, excludeInProgress, excludeFinished, startBlockFrom, startBlockTo, endBlockFrom, endBlockTo string) (duels *[]Duel, err error) {
+	fmt.Printf(`\nfetching wizards by: wizardIds=%s. excludeInProgress=%s. excludeFinished=%s. startBlockFrom=%s. startBlockTo=%s. endBlockFrom=%s. endBlockTo=%s.`, wizardIds, excludeInProgress, excludeFinished, startBlockFrom, startBlockTo, endBlockFrom, endBlockTo)
+
+	queryParams := "?"
+	if wizardIds != "" {
+		queryParams = queryParams + "wizardIds=" + wizardIds + "&"
+	}
+	if excludeInProgress != "" {
+		queryParams = queryParams + "excludeInProgress=" + excludeInProgress + "&"
+	}
+	if excludeFinished != "" {
+		queryParams = queryParams + "excludeFinished=" + excludeFinished + "&"
+	}
+	if startBlockFrom != "" {
+		queryParams = queryParams + "startBlockFrom=" + startBlockFrom + "&"
+	}
+	if startBlockTo != "" {
+		queryParams = queryParams + "startBlockTo=" + startBlockTo + "&"
+	}
+	if endBlockFrom != "" {
+		queryParams = queryParams + "endBlockFrom=" + endBlockFrom + "&"
+	}
+	if endBlockTo != "" {
+		queryParams = queryParams + "endBlockTo=" + endBlockTo
+	}
+
+	url := cw.GetBaseURL() + "/duels" + queryParams
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	cw.setHeaders(req)
+
+	res, err := cw.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode == 200 {
+		body, err := ioutil.ReadAll(res.Body)
+		res.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("\nresp=%s\n", string(body))
+
+		duels = &[]Duel{}
+		if err := json.Unmarshal(body, duels); err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("\nsuccessfully fetched duels=%+v", duels)
+
+		return duels, nil
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
