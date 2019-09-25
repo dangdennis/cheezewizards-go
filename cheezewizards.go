@@ -4,7 +4,6 @@ package cheezewizards
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -107,36 +106,27 @@ func (cw *CheezeWizards) GetWizardByID(id int) (wizard *Wizard, err error) {
 	return nil, nil
 }
 
-// AttrArgs is the argument struct for GetWizardsByAttributes
-// Each attribute is an optional query parameter: affinity, min/max power, and owner
-type AttrArgs struct {
-	MinPower string // wizards whose current power is greater than or equal to minPower
-	MaxPower string // wizards whose current power is less than or equal to maxPower
-	Owner    string // wizards owned by this address
-	Affinity *int   // wizards with this affinity: 0 = NOTSET, 1 = NEUTRAL, 2 = FIRE, 3 = WIND, 4 = WATER
-}
-
 // GetWizardsByAttributes finds wizards by affinity, power, and/or owner
-func (cw *CheezeWizards) GetWizardsByAttributes(args AttrArgs) (wizards *[]Wizard, err error) {
-	fmt.Printf("\nfetching wizards by args=%+v", args)
+// Each attribute is an optional query parameter: affinity, min/max power, and owner
+// affinity: 0 = NOTSET, 1 = NEUTRAL, 2 = FIRE, 3 = WIND, 4 = WATER
+func (cw *CheezeWizards) GetWizardsByAttributes(owner, affinity, minPower, maxPower string) (wizards *[]Wizard, err error) {
+	fmt.Printf("\nfetching wizards by owner=%s, affinity=%s, minPower=%s, maxPower=%s", owner, affinity, minPower, maxPower)
 
 	queryParams := "?"
-	if args.Owner != "" {
-		queryParams = queryParams + "owner=" + args.Owner + "&"
+	if owner != "" {
+		queryParams = queryParams + "owner=" + owner + "&"
 	}
-	if args.Affinity != nil {
-		queryParams = queryParams + "affinity=" + strconv.Itoa(*args.Affinity) + "&"
+	if affinity != "" {
+		queryParams = queryParams + "affinity=" + affinity + "&"
 	}
-	if args.MinPower != "" {
-		queryParams = queryParams + "minPower=" + args.MinPower + "&"
+	if minPower != "" {
+		queryParams = queryParams + "minPower=" + minPower + "&"
 	}
-	if args.MaxPower != "" {
-		queryParams = queryParams + "maxPower=" + args.MaxPower + "&"
+	if maxPower != "" {
+		queryParams = queryParams + "maxPower=" + maxPower
 	}
 
 	url := cw.GetBaseURL() + "/wizards" + queryParams
-
-	fmt.Println("url=", url)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -157,8 +147,6 @@ func (cw *CheezeWizards) GetWizardsByAttributes(args AttrArgs) (wizards *[]Wizar
 			return nil, err
 		}
 
-		fmt.Println("body result=", string(body))
-
 		wizards = &[]Wizard{}
 		if err := json.Unmarshal(body, wizards); err != nil {
 			return nil, err
@@ -169,7 +157,9 @@ func (cw *CheezeWizards) GetWizardsByAttributes(args AttrArgs) (wizards *[]Wizar
 		return wizards, nil
 	}
 
-	return nil, errors.New("unsuccessful response. status=" + res.Status)
+	body, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	return nil, fmt.Errorf("unsuccessful response. status=%s. msg=%s", res.Status, string(body))
 
 }
 
