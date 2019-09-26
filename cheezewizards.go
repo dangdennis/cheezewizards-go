@@ -263,16 +263,16 @@ func (cw *CheezeWizards) GetDuelsByAttributes(wizardIds, excludeInProgress, excl
 			return nil, err
 		}
 
-		fmt.Printf("\nresp=%s\n", string(body))
+		type apiResponse struct {
+			Duels []Duel `json:"duels"`
+		}
 
-		duels = &[]Duel{}
-		if err := json.Unmarshal(body, duels); err != nil {
+		res := apiResponse{}
+		if err := json.Unmarshal(body, &res); err != nil {
 			return nil, err
 		}
 
-		fmt.Printf("\nsuccessfully fetched duels=%+v", duels)
-
-		return duels, nil
+		return &res.Duels, nil
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
