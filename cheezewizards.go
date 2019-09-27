@@ -73,14 +73,7 @@ func (cw *CheezeWizards) GetWizardByID(id int) (wizard *Wizard, err error) {
 
 	url := cw.GetBaseURL() + "/wizards/" + strconv.Itoa(id)
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	cw.setHeaders(req)
-
-	res, err := cw.client.Do(req)
+	res, err := cw.performRequest(url)
 	if err != nil {
 		return nil, err
 	}
@@ -132,14 +125,7 @@ func (cw *CheezeWizards) GetWizardsByAttributes(owner string, affinity, minPower
 
 	url := cw.GetBaseURL() + "/wizards" + queryParams
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	cw.setHeaders(req)
-
-	res, err := cw.client.Do(req)
+	res, err := cw.performRequest(url)
 	if err != nil {
 		return nil, err
 	}
@@ -172,14 +158,7 @@ func (cw *CheezeWizards) GetDuelByID(id int) (duel *Duel, err error) {
 
 	url := cw.GetBaseURL() + "/duels/" + strconv.Itoa(id)
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	cw.setHeaders(req)
-
-	res, err := cw.client.Do(req)
+	res, err := cw.performRequest(url)
 	if err != nil {
 		return nil, err
 	}
@@ -244,14 +223,7 @@ func (cw *CheezeWizards) GetDuelsByAttributes(wizardIds, excludeInProgress, excl
 
 	url := cw.GetBaseURL() + "/duels" + queryParams
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	cw.setHeaders(req)
-
-	res, err := cw.client.Do(req)
+	res, err := cw.performRequest(url)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +236,7 @@ func (cw *CheezeWizards) GetDuelsByAttributes(wizardIds, excludeInProgress, excl
 		}
 
 		type apiResponse struct {
-			Duels []Duel `json:"duels"`
+			Data []Duel `json:"duels"`
 		}
 
 		res := apiResponse{}
@@ -272,12 +244,24 @@ func (cw *CheezeWizards) GetDuelsByAttributes(wizardIds, excludeInProgress, excl
 			return nil, err
 		}
 
-		return &res.Duels, nil
+		return &res.Data, nil
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	return nil, fmt.Errorf("unsuccessful response. status=%s. msg=%s", res.Status, string(body))
+}
+
+// performRequest sets the auth headers and performs the http request
+func (cw *CheezeWizards) performRequest(url string) (res *http.Response, err error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	cw.setHeaders(req)
+
+	return cw.client.Do(req)
 }
 
 func (cw *CheezeWizards) setHeaders(req *http.Request) {
